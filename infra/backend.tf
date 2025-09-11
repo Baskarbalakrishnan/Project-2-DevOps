@@ -5,5 +5,6 @@ terraform {
     region         = "ap-south-1"
     dynamodb_table = "project2-tf-locks"          # the DynamoDB table you created
     encrypt        = true
+    workspace_key_prefix = "project2"        # <--- optional but recommended
   }
 }

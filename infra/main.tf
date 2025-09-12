@@ -1,25 +1,7 @@
-terraform {
-  backend "s3" {
-    bucket         = "my-tfstate-bucket-123"            # <- change
-    key            = "project2/${terraform.workspace}/terraform.tfstate"
-    region         = "ap-south-1"                       # <- change if needed
-    dynamodb_table = "tf-locks"
-    encrypt        = true
-  }
-
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
-    }
-  }
-}
-
 provider "aws" {
   region = var.aws_region
 }
 
-# Data sources
 data "aws_vpc" "default" {
   default = true
 }
@@ -40,12 +22,12 @@ data "aws_ami" "al2" {
   }
 }
 
-# Security Group
 resource "aws_security_group" "app_sg" {
   name        = "project2-app-sg-${terraform.workspace}"
   description = "App SG"
   vpc_id      = data.aws_vpc.default.id
 
+  # HTTP
   ingress {
     from_port   = 80
     to_port     = 80
@@ -53,6 +35,7 @@ resource "aws_security_group" "app_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # SSH
   ingress {
     from_port   = 22
     to_port     = 22
@@ -70,7 +53,6 @@ resource "aws_security_group" "app_sg" {
   tags = { Env = terraform.workspace }
 }
 
-# EC2 Instance
 resource "aws_instance" "app" {
   ami                         = data.aws_ami.al2.id
   instance_type               = var.instance_type
@@ -86,13 +68,5 @@ resource "aws_instance" "app" {
   }
 }
 
-# Outputs
-output "public_ip" {
-  value = aws_instance.app.public_ip
-}
-
-output "app_url" {
-  value = "http://${aws_instance.app.public_ip}"
-}
 
 

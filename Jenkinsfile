@@ -78,21 +78,21 @@ pipeline {
     }
 
     stage('Deploy over SSH') {
-      when { anyOf { branch 'dev'; branch 'staging'; branch 'prod' } }
-      steps {
-        sshagent(credentials: ['ec2-ssh-key']) {
-          sh '''
-            ssh -o StrictHostKeyChecking=no ec2-user@$PUBLIC_IP <<'EOF'
-              set -e
-              sudo docker rm -f devops-app || true
-              sudo docker pull '"$DOCKER_IMAGE"'
-              sudo docker run -d --restart unless-stopped -p 80:3000 --name devops-app '"$DOCKER_IMAGE"'
-            EOF
-          '''
-        }
-        echo "App URL: http://$PUBLIC_IP"
-      }
+  when { anyOf { branch 'dev'; branch 'staging'; branch 'prod' } }
+  steps {
+    sshagent(credentials: ['ec2-ssh-key']) {
+      sh """
+        ssh -o StrictHostKeyChecking=no ec2-user@$PUBLIC_IP <<EOF
+          set -e
+          sudo docker rm -f devops-app || true
+          sudo docker pull $DOCKER_IMAGE
+          sudo docker run -d --restart unless-stopped -p 80:3000 --name devops-app $DOCKER_IMAGE
+        EOF
+      """
     }
+    echo "App URL: http://$PUBLIC_IP"
+  }
+}
   }
 
   post {

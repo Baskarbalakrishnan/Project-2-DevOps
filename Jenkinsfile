@@ -49,27 +49,26 @@ pipeline {
     }
 
     stage('Terraform Apply') {
-      when { anyOf { branch 'dev'; branch 'staging'; branch 'prod' } }
-      steps {
-        dir('infra') {
-          withCredentials([
-            string(credentialsId: 'aws-access-key-id',     variable: 'AWS_ACCESS_KEY_ID'),
-            string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
-          ]) {
-            sh """
-              terraform init -upgrade
-              terraform workspace select $TARGET_ENV || terraform workspace new $TARGET_ENV
-              terraform apply -auto-approve \
-                -var-file="env/$TARGET_ENV.tfvars"
-            """
-            script {
-              env.PUBLIC_IP = sh(script: 'terraform output -raw public_ip', returnStdout: true).trim()
-              echo "Public IP: ${env.PUBLIC_IP}"
-            }
-          }
+  when { anyOf { branch 'dev'; branch 'staging'; branch 'prod' } }
+  steps {
+    dir('infra') {
+      withCredentials([
+        string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
+        string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
+      ]) {
+        script {
+          sh """
+            terraform init -upgrade
+            terraform workspace select $TARGET_ENV || terraform workspace new $TARGET_ENV
+            terraform apply -auto-approve -var-file="env/${TARGET_ENV}.tfvars"
+          """
+          env.PUBLIC_IP = sh(script: 'terraform output -raw public_ip', returnStdout: true).trim()
+          echo "Public IP: ${env.PUBLIC_IP}"
         }
       }
     }
+  }
+}
 
     stage('Approval for PROD') {
       when { branch 'prod' }

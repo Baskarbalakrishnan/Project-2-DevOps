@@ -80,15 +80,17 @@ pipeline {
     stage('Deploy over SSH') {
   when { anyOf { branch 'dev'; branch 'staging'; branch 'prod' } }
   steps {
-    sshagent(credentials: ['ec2-ssh-key']) {
-      sh """
-        ssh -o StrictHostKeyChecking=no ec2-user@$PUBLIC_IP <<EOF
-          set -e
-          sudo docker rm -f devops-app || true
-          sudo docker pull $DOCKER_IMAGE
-          sudo docker run -d --restart unless-stopped -p 80:3000 --name devops-app $DOCKER_IMAGE
-        EOF
-      """
+    stage('Deploy over SSH') {
+    sshagent(['ec2-user']) {
+        sh '''
+            ssh -o StrictHostKeyChecking=no ec2-user@${public_ip} <<EOF
+            docker stop devops-app || true
+            docker rm devops-app || true
+            docker run -d --name devops-app -p 3000:3000 baskarb/aws-devops-app:${BUILD_TAG}
+            EOF
+        '''
+    }
+}
     }
     echo "App URL: http://$PUBLIC_IP"
   }

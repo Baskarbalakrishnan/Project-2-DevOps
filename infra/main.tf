@@ -6,6 +6,7 @@ terraform {
     dynamodb_table = "tf-locks"
     encrypt        = true
   }
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -18,6 +19,7 @@ provider "aws" {
   region = var.aws_region
 }
 
+# Data sources
 data "aws_vpc" "default" {
   default = true
 }
@@ -38,12 +40,12 @@ data "aws_ami" "al2" {
   }
 }
 
+# Security Group
 resource "aws_security_group" "app_sg" {
   name        = "project2-app-sg-${terraform.workspace}"
   description = "App SG"
   vpc_id      = data.aws_vpc.default.id
 
-  # HTTP
   ingress {
     from_port   = 80
     to_port     = 80
@@ -51,7 +53,6 @@ resource "aws_security_group" "app_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # SSH (lock this to Jenkins public IP if possible)
   ingress {
     from_port   = 22
     to_port     = 22
@@ -69,15 +70,15 @@ resource "aws_security_group" "app_sg" {
   tags = { Env = terraform.workspace }
 }
 
+# EC2 Instance
 resource "aws_instance" "app" {
-  ami                    = data.aws_ami.al2.id
-  instance_type          = var.instance_type
-  subnet_id              = data.aws_subnets.default.ids[0]
-  vpc_security_group_ids = [aws_security_group.app_sg.id]
+  ami                         = data.aws_ami.al2.id
+  instance_type               = var.instance_type
+  subnet_id                   = data.aws_subnets.default.ids[0]
+  vpc_security_group_ids      = [aws_security_group.app_sg.id]
   associate_public_ip_address = true
-  key_name               = var.key_name
+  key_name                    = var.key_name
 
-  # Install Docker once. (Deploy/updates happen via Jenkins SSH stage)
   user_data = file("${path.module}/user-data-docker.sh")
 
   tags = {
@@ -85,6 +86,7 @@ resource "aws_instance" "app" {
   }
 }
 
+# Outputs
 output "public_ip" {
   value = aws_instance.app.public_ip
 }
@@ -92,4 +94,5 @@ output "public_ip" {
 output "app_url" {
   value = "http://${aws_instance.app.public_ip}"
 }
+
 
